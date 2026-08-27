@@ -44,6 +44,45 @@ test("read-only SQL guard", () => {
   assert.equal(isReadOnlySql(42), false);
 });
 
+test("read-only SQL guard: still allows legitimate reads", () => {
+  assert.equal(isReadOnlySql("SELECT 1"), true);
+  assert.equal(isReadOnlySql("select * from a.b limit 10"), true);
+  assert.equal(isReadOnlySql("WITH x AS (SELECT 1) SELECT * FROM x"), true);
+  assert.equal(isReadOnlySql("EXPLAIN SELECT 1"), true);
+  assert.equal(isReadOnlySql("SHOW search_path"), true);
+  assert.equal(isReadOnlySql("-- c\nSELECT 2"), true);
+  assert.equal(isReadOnlySql("SELECT 3;"), true);
+  assert.equal(isReadOnlySql("/* c */ select 4"), true);
+});
+
+test("read-only SQL guard: rejects data-modifying CTEs", () => {
+  assert.equal(
+    isReadOnlySql(
+      "WITH d AS (DELETE FROM public.t RETURNING *) SELECT count(*) FROM d",
+    ),
+    false,
+  );
+});
+
+test("read-only SQL guard: rejects EXPLAIN ANALYZE (it executes)", () => {
+  assert.equal(isReadOnlySql("EXPLAIN ANALYZE DELETE FROM public.t"), false);
+  assert.equal(
+    isReadOnlySql("EXPLAIN (ANALYZE, BUFFERS) UPDATE t SET a=1"),
+    false,
+  );
+});
+
+test("read-only SQL guard: rejects SELECT INTO (DDL)", () => {
+  assert.equal(
+    isReadOnlySql("SELECT * INTO public.newt FROM public.t"),
+    false,
+  );
+});
+
+test("read-only SQL guard: rejects multi-statement payloads", () => {
+  assert.equal(isReadOnlySql("SELECT 1; DROP TABLE public.t"), false);
+});
+
 test("filterExposedTools removes deny and sorts by name", () => {
   const tools = [
     { name: "postSchema" }, { name: "deleteUsers" }, { name: "getTable" },

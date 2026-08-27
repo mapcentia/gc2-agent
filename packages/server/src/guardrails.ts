@@ -37,12 +37,60 @@ export const classifyTool = (name: string): ToolClass => {
   return "deny";
 };
 
-/** SELECT / WITH / EXPLAIN / SHOW after leading comments and whitespace. */
-const SQL_READ_ONLY =
-  /^(?:\s|--[^\n]*\n|\/\*[\s\S]*?\*\/)*(select|with|explain|show)\b/i;
+/** Leading comments/whitespace, stripped before classification. */
+const LEADING_TRIVIA = /^(?:\s|--[^\n]*\n|\/\*[\s\S]*?\*\/)*/;
 
-export const isReadOnlySql = (q: unknown): boolean =>
-  typeof q === "string" && SQL_READ_ONLY.test(q);
+/** SELECT / WITH / EXPLAIN / SHOW after leading comments and whitespace. */
+const SQL_READ_ONLY_KEYWORD = /^(select|with|explain|show)\b/i;
+
+/**
+ * `EXPLAIN` followed by either the bare `ANALYZE` keyword or a parenthesized
+ * options list that contains `ANALYZE` (e.g. `EXPLAIN (ANALYZE, BUFFERS)`).
+ * EXPLAIN ANALYZE actually executes the statement, so it is not read-only.
+ */
+const EXPLAIN_ANALYZE =
+  /^explain\s+(?:\(([^)]*)\)\s*|(analyze)\b)/i;
+
+/** Write keywords anywhere in the statement, matched as whole words. */
+const WRITE_KEYWORD =
+  /\b(insert|update|delete|merge|truncate|drop|alter|create|grant|revoke|copy|vacuum|call|do|into)\b/i;
+
+export const isReadOnlySql = (q: unknown): boolean => {
+  if (typeof q !== "string") return false;
+
+  // Strip leading comments/whitespace.
+  let body = q.replace(LEADING_TRIVIA, "");
+
+  // Strip exactly one trailing semicolon (with optional trailing
+  // whitespace/comments after it), then reject if any `;` remains —
+  // a cheap multi-statement guard. A `;` inside a string literal is a
+  // rare false positive we accept; this fails safe.
+  const trailingTrivia = /(?:\s|--[^\n]*\n?|\/\*[\s\S]*?\*\/)*$/;
+  const trailingMatch = body.match(trailingTrivia);
+  const trailingLen = trailingMatch ? trailingMatch[0].length : 0;
+  const core = trailingLen > 0 ? body.slice(0, body.length - trailingLen) : body;
+  if (core.endsWith(";")) {
+    body = core.slice(0, -1);
+  } else {
+    body = core;
+  }
+  if (body.includes(";")) return false;
+
+  if (!SQL_READ_ONLY_KEYWORD.test(body)) return false;
+
+  const explainMatch = body.match(EXPLAIN_ANALYZE);
+  if (explainMatch) {
+    const options = explainMatch[1];
+    const bareAnalyze = explainMatch[2];
+    if (bareAnalyze || (options && /\banalyze\b/i.test(options))) {
+      return false;
+    }
+  }
+
+  if (WRITE_KEYWORD.test(body)) return false;
+
+  return true;
+};
 
 /** Tools shown to the model: deny removed, sorted for prompt-cache stability. */
 export const filterExposedTools = <T extends { name: string }>(tools: T[]): T[] =>
