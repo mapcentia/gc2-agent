@@ -69,5 +69,6 @@ export const streamChat = async (opts: {
     if (done) break;
     splitter.push(decoder.decode(value, { stream: true }));
   }
+  splitter.push(decoder.decode());
   splitter.flush();
 };
