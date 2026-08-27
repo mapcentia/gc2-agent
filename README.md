@@ -38,11 +38,12 @@ Selected by `LLM_PROVIDER` (default `bedrock`):
 | --------------- | -------------------------------------- | ------------------------------------------------ |
 | `bedrock`       | `AWS_REGION`                           | `BEDROCK_MODEL` (default `anthropic.claude-opus-5`); AWS creds via the standard chain (env/profile/IAM role) |
 | `anthropic`     | `ANTHROPIC_API_KEY`                    | `ANTHROPIC_MODEL` (default `claude-opus-5`)       |
-| `openai`        | —                                       | `OPENAI_BASE_URL` (point at Ollama/LM Studio/vLLM), `OPENAI_MODEL` (default `gpt-5.1`) |
+| `openai`        | `OPENAI_API_KEY` (required for the real OpenAI API; optional — any value — when `OPENAI_BASE_URL` points at a local OpenAI-compatible endpoint) | `OPENAI_BASE_URL` (point at Ollama/LM Studio/vLLM), `OPENAI_MODEL` (default `gpt-5.1`) |
 
-Also always required: `MCP_COMMAND` and `MCP_ARGS` (how to spawn the Centia
-MCP server over stdio), and `API_BASE_URL` (the Centia API the MCP server
-talks to, default `https://api.centia.io`).
+`MCP_ARGS` is always hard-required (how to invoke the Centia MCP server over
+stdio); `MCP_COMMAND` defaults to `node` and `API_BASE_URL` defaults to
+`https://api.centia.io` if unset. Recommend setting all three explicitly
+rather than relying on the defaults.
 
 ## Confirmation protocol
 

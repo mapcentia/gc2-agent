@@ -8,6 +8,11 @@ COPY packages/server ./packages/server
 # tsx) from an allowlist that is empty by default. The first install exits
 # non-zero after reporting the ignored build; `approve-builds --all` then
 # runs it non-interactively, and the final install is the real, verified one.
+# --trust-lockfile bypasses pnpm's minimumReleaseAge/trustPolicy supply-chain
+# check, which otherwise rejects lockfile entries published too recently
+# relative to the build time. Appropriate here because this is a private,
+# closed-source lockfile already reviewed in source control; drop the flag
+# if/when this policy is pinned or relaxed via project-level pnpm config.
 RUN (pnpm install --frozen-lockfile --trust-lockfile || true) \
     && pnpm approve-builds --all \
     && pnpm install --frozen-lockfile --trust-lockfile \
