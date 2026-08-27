@@ -32,6 +32,9 @@ export function AgentChat(props: AgentChatProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
+  /** Mirrors `busy` synchronously so decide() can gate against double-clicks
+   *  even between the state update and the next render. */
+  const busyRef = useRef(false);
 
   useEffect(() => {
     props.onMessagesChange?.(messages);
@@ -48,6 +51,7 @@ export function AgentChat(props: AgentChatProps) {
     assistantId: string,
   ) => {
     setBusy(true);
+    busyRef.current = true;
     setError(null);
     const toolNamesById = new Map<string, string>();
     try {
@@ -57,6 +61,19 @@ export function AgentChat(props: AgentChatProps) {
         token,
         body: { messages: history, context: props.getContext?.(), resume: resumePayload },
         onEvent: (ev: AgentEvent) => {
+          // Side effects run first, outside the setMessages updater — React
+          // updaters must be pure (StrictMode double-invokes them).
+          if (ev.type === "error") {
+            setError(ev.error);
+          } else if (ev.type === "tool_result" && !ev.isError) {
+            const assistantMsg = messagesRef.current.find(
+              (m): m is UiAssistantMessage => m.id === assistantId && m.role === "assistant",
+            );
+            const call = assistantMsg?.toolCalls.find((c) => c.id === ev.toolUseId);
+            const name = toolNamesById.get(ev.toolUseId) ?? call?.name;
+            if (name) props.onToolExecuted?.(name);
+          }
+
           setMessages((cur) =>
             cur.map((m) => {
               if (m.id !== assistantId || m.role !== "assistant") return m;
@@ -77,8 +94,6 @@ export function AgentChat(props: AgentChatProps) {
                   call.result = ev.content;
                   call.isError = ev.isError;
                 }
-                const name = toolNamesById.get(ev.toolUseId) ?? call?.name;
-                if (name && !ev.isError) props.onToolExecuted?.(name);
               } else if (ev.type === "confirm_request") {
                 next.confirm = {
                   pending: ev.pending,
@@ -96,8 +111,6 @@ export function AgentChat(props: AgentChatProps) {
                 if (ev.truncated) {
                   next.text = next.text ? `${next.text}\n\n_${labels.truncated}_` : `_${labels.truncated}_`;
                 }
-              } else if (ev.type === "error") {
-                setError(ev.error);
               }
               return next;
             }),
@@ -108,6 +121,7 @@ export function AgentChat(props: AgentChatProps) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
+      busyRef.current = false;
     }
   };
 
@@ -115,7 +129,15 @@ export function AgentChat(props: AgentChatProps) {
     if (!text.trim() || busy) return;
     const userMsg: UiMessage = { id: newId(), role: "user", text };
     const assistantId = newId();
-    const history = [...messagesRef.current, userMsg];
+    // A new user message abandons any confirm card still awaiting a
+    // decision on an earlier turn — freeze it so it renders inert instead
+    // of staying clickable.
+    const withExpiredConfirms = messagesRef.current.map((m) =>
+      m.role === "assistant" && m.confirm && !m.confirm.resolved
+        ? { ...m, confirm: { ...m.confirm, resolved: true } }
+        : m,
+    );
+    const history = [...withExpiredConfirms, userMsg];
     setMessages([
       ...history,
       { id: assistantId, role: "assistant", text: "", toolCalls: [] },
@@ -126,6 +148,7 @@ export function AgentChat(props: AgentChatProps) {
 
   /** Record a decision; when all writes are decided, send the resume request. */
   const decide = (messageId: string, toolUseId: string, approved: boolean) => {
+    if (busyRef.current) return;
     const msg = messagesRef.current.find(
       (m): m is UiAssistantMessage => m.id === messageId && m.role === "assistant",
     );
