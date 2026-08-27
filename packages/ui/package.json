@@ -1,6 +1,12 @@
 {
   "name": "@centia-io/agent-ui",
   "version": "0.1.0",
+  "description": "Embeddable React chat component for the Centia AI agent",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/centia-io/centia-agent"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -35,5 +41,8 @@
     "react-dom": "^19.2.8",
     "tsx": "^4.23.12",
     "typescript": "^5.9.3"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

@@ -1,14 +1,30 @@
 {
   "name": "@centia-io/agent-protocol",
   "version": "0.1.0",
+  "description": "Wire protocol types for the Centia embedded AI agent",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/centia-io/centia-agent"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
-  "files": ["dist"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -b",
     "typecheck": "tsc -b --noEmit",
     "test": "echo 'no tests'"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
