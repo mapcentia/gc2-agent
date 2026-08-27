@@ -16,6 +16,8 @@ test("context block renders app, description and data", () => {
 test("system prompt covers provisioning + confirmation flow", () => {
   assert.match(SYSTEM_PROMPT, /confirmation/i);
   assert.match(SYSTEM_PROMPT, /postSql/);
+  assert.match(SYSTEM_PROMPT, /PARALLEL tool calls in a single response/);
+  assert.match(SYSTEM_PROMPT, /one aggregate call/);
   assert.match(SYSTEM_PROMPT, /never assume.*the_geom/is);
   assert.match(SYSTEM_PROMPT, /Never state that a change has been made/);
 });

@@ -8,10 +8,12 @@ export function MessageView({
   message,
   labels,
   onDecide,
+  onDecideAll,
 }: {
   message: UiMessage;
   labels: Labels;
   onDecide: (toolUseId: string, approved: boolean) => void;
+  onDecideAll: (approved: boolean) => void;
 }) {
   if (message.role === "user") {
     return <div className="ca-msg ca-msg-user">{message.text}</div>;
@@ -27,7 +29,12 @@ export function MessageView({
         </div>
       )}
       {message.confirm && (
-        <ConfirmCard confirm={message.confirm} labels={labels} onDecide={onDecide} />
+        <ConfirmCard
+          confirm={message.confirm}
+          labels={labels}
+          onDecide={onDecide}
+          onDecideAll={onDecideAll}
+        />
       )}
     </div>
   );

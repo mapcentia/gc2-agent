@@ -43,6 +43,7 @@
 .ca-tool-body pre { margin: 4px 0; overflow-x: auto; font-size: 12px; }
 .ca-confirm { border: 1px solid var(--ca-accent); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
 .ca-confirm-title { font-weight: 600; }
+.ca-confirm-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 .ca-confirm-item { border-top: 1px solid var(--ca-border); padding-top: 8px; }
 .ca-confirm-input { background: var(--ca-tool-bg); border-radius: 6px; padding: 6px; overflow-x: auto; font-size: 12px; max-height: 200px; }
 .ca-confirm-actions { display: flex; gap: 8px; }

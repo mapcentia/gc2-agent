@@ -33,6 +33,8 @@ export type Labels = {
   thinking: string;
   approve: string;
   deny: string;
+  approveAll: string;
+  denyAll: string;
   confirmTitle: string;
   autoNote: string;
   truncated: string;
@@ -47,6 +49,8 @@ export const LABELS: Record<"da" | "en", Labels> = {
     thinking: "Tænker…",
     approve: "Godkend",
     deny: "Afvis",
+    approveAll: "Godkend alle",
+    denyAll: "Afvis alle",
     confirmTitle: "Agenten vil udføre følgende ændringer",
     autoNote: "Læse-kald udføres automatisk ved godkendelse.",
     truncated: "(Stoppede efter maks. iterationer — spørg igen for at fortsætte.)",
@@ -60,6 +64,8 @@ export const LABELS: Record<"da" | "en", Labels> = {
     thinking: "Thinking…",
     approve: "Approve",
     deny: "Deny",
+    approveAll: "Approve all",
+    denyAll: "Deny all",
     confirmTitle: "The agent wants to perform these changes",
     autoNote: "Read calls run automatically on approval.",
     truncated: "(Stopped after max iterations — ask again to continue.)",

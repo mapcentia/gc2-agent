@@ -146,15 +146,22 @@ export function AgentChat(props: AgentChatProps) {
     await run(toWire(history), undefined, assistantId);
   };
 
-  /** Record a decision; when all writes are decided, send the resume request. */
-  const decide = (messageId: string, toolUseId: string, approved: boolean) => {
-    if (busyRef.current) return;
+  /** Look up an unresolved confirm on an assistant message (null while busy). */
+  const activeConfirm = (messageId: string) => {
+    if (busyRef.current) return null;
     const msg = messagesRef.current.find(
       (m): m is UiAssistantMessage => m.id === messageId && m.role === "assistant",
     );
     const confirm = msg?.confirm;
-    if (!msg || !confirm || confirm.resolved) return;
-    const decisions = { ...confirm.decisions, [toolUseId]: approved };
+    return confirm && !confirm.resolved ? confirm : null;
+  };
+
+  /** Store the decisions; when all writes are decided, send the resume request. */
+  const applyDecisions = (
+    messageId: string,
+    confirm: NonNullable<UiAssistantMessage["confirm"]>,
+    decisions: Record<string, boolean>,
+  ) => {
     const writes = confirm.pending.filter((p) => p.requiresApproval);
     const complete = writes.every((p) => decisions[p.id] !== undefined);
     setMessages((cur) =>
@@ -176,6 +183,24 @@ export function AgentChat(props: AgentChatProps) {
     );
   };
 
+  /** Record one decision. */
+  const decide = (messageId: string, toolUseId: string, approved: boolean) => {
+    const confirm = activeConfirm(messageId);
+    if (!confirm) return;
+    applyDecisions(messageId, confirm, { ...confirm.decisions, [toolUseId]: approved });
+  };
+
+  /** Decide every still-undecided write at once (Approve all / Deny all). */
+  const decideAll = (messageId: string, approved: boolean) => {
+    const confirm = activeConfirm(messageId);
+    if (!confirm) return;
+    const decisions = { ...confirm.decisions };
+    for (const p of confirm.pending) {
+      if (p.requiresApproval && decisions[p.id] === undefined) decisions[p.id] = approved;
+    }
+    applyDecisions(messageId, confirm, decisions);
+  };
+
   return (
     <div className="ca-root">
       <div className="ca-scroll" ref={scrollerRef}>
@@ -191,6 +216,7 @@ export function AgentChat(props: AgentChatProps) {
             message={m}
             labels={labels}
             onDecide={(toolUseId, approved) => decide(m.id, toolUseId, approved)}
+            onDecideAll={(approved) => decideAll(m.id, approved)}
           />
         ))}
         {busy && <div className="ca-thinking">{labels.thinking}</div>}
