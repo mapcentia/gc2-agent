@@ -15,6 +15,7 @@
     "@centia-io/agent-protocol": "workspace:*",
     "@hono/node-server": "^2.1.1",
     "@modelcontextprotocol/sdk": "^1.30.0",
+    "dotenv": "^17.4.2",
     "hono": "^4.13.5",
     "openai": "^7.7.0"
   },
