@@ -18,6 +18,8 @@ test("write tools require approval", () => {
   assert.equal(classifyTool("deleteTable"), "write");
   assert.equal(classifyTool("postLayerClass"), "write");
   assert.equal(classifyTool("patchKeyvalue"), "write");
+  assert.equal(classifyTool("postGraphQL"), "write");
+  assert.equal(classifyTool("postCallDry"), "write");
 });
 
 test("auth-sensitive tools are denied", () => {

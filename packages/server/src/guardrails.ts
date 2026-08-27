@@ -23,7 +23,10 @@ const DENY = new Set([
   "postSqlNoToken",
 ]);
 
-const READ_EXTRA = new Set(["postSql", "postCallDry", "postGraphQL"]);
+// Only postSql is auto-read (guarded by isReadOnlySql).
+// postGraphQL and postCallDry deliberately fall through to "write" because
+// there is no payload guard for GraphQL mutations and dry-run side effects.
+const READ_EXTRA = new Set(["postSql"]);
 
 export type ToolClass = "read" | "write" | "deny";
 
