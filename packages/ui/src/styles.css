@@ -1,1 +1,62 @@
-/* Task 8: Styles to be added */
+/* @centia-io/agent-ui — scoped, theme via CSS variables. Hosts may override
+   the --ca-* variables; sensible light defaults below, dark via
+   [data-ca-theme="dark"] on any ancestor. */
+.ca-root {
+  --ca-bg: #ffffff;
+  --ca-fg: #1f2328;
+  --ca-muted: #6b7280;
+  --ca-border: #e5e7eb;
+  --ca-user-bg: #eef2ff;
+  --ca-tool-bg: #f8fafc;
+  --ca-accent: #2563eb;
+  --ca-ok: #16a34a;
+  --ca-no: #dc2626;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  color: var(--ca-fg);
+  background: var(--ca-bg);
+  font-size: 14px;
+}
+[data-ca-theme="dark"] .ca-root {
+  --ca-bg: #141414;
+  --ca-fg: #e6e6e6;
+  --ca-muted: #9ca3af;
+  --ca-border: #303030;
+  --ca-user-bg: #1e293b;
+  --ca-tool-bg: #1c1c1c;
+}
+.ca-scroll { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.ca-msg { max-width: 100%; border-radius: 8px; line-height: 1.5; }
+.ca-msg-user { align-self: flex-end; background: var(--ca-user-bg); padding: 8px 12px; white-space: pre-wrap; }
+.ca-msg-assistant { align-self: stretch; display: flex; flex-direction: column; gap: 6px; }
+.ca-markdown :is(p, ul, ol) { margin: 0.4em 0; }
+.ca-markdown pre { background: var(--ca-tool-bg); border: 1px solid var(--ca-border); border-radius: 6px; padding: 8px; overflow-x: auto; }
+.ca-markdown table { border-collapse: collapse; }
+.ca-markdown th, .ca-markdown td { border: 1px solid var(--ca-border); padding: 4px 8px; }
+.ca-tool { border: 1px solid var(--ca-border); border-radius: 6px; background: var(--ca-tool-bg); }
+.ca-tool-error { border-color: var(--ca-no); }
+.ca-tool-head { display: flex; gap: 8px; align-items: center; width: 100%; background: none; border: none; color: var(--ca-muted); font: inherit; padding: 6px 10px; cursor: pointer; text-align: left; }
+.ca-tool-status { width: 1em; }
+.ca-tool-body { padding: 0 10px 8px; }
+.ca-tool-body pre { margin: 4px 0; overflow-x: auto; font-size: 12px; }
+.ca-confirm { border: 1px solid var(--ca-accent); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.ca-confirm-title { font-weight: 600; }
+.ca-confirm-item { border-top: 1px solid var(--ca-border); padding-top: 8px; }
+.ca-confirm-input { background: var(--ca-tool-bg); border-radius: 6px; padding: 6px; overflow-x: auto; font-size: 12px; max-height: 200px; }
+.ca-confirm-actions { display: flex; gap: 8px; }
+.ca-confirm-decided.ca-ok { color: var(--ca-ok); font-weight: 600; }
+.ca-confirm-decided.ca-no { color: var(--ca-no); font-weight: 600; }
+.ca-confirm-reads { color: var(--ca-muted); font-size: 12px; }
+.ca-btn { border: 1px solid var(--ca-border); border-radius: 6px; background: var(--ca-bg); color: var(--ca-fg); padding: 4px 12px; font: inherit; cursor: pointer; }
+.ca-btn:disabled { opacity: 0.5; cursor: default; }
+.ca-btn-approve { border-color: var(--ca-ok); color: var(--ca-ok); }
+.ca-btn-deny { border-color: var(--ca-no); color: var(--ca-no); }
+.ca-btn-send { background: var(--ca-accent); border-color: var(--ca-accent); color: #fff; }
+.ca-inputrow { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--ca-border); }
+.ca-input { flex: 1; resize: none; border: 1px solid var(--ca-border); border-radius: 6px; background: var(--ca-bg); color: var(--ca-fg); padding: 6px 10px; font: inherit; }
+.ca-thinking { color: var(--ca-muted); }
+.ca-error { color: var(--ca-no); border: 1px solid var(--ca-no); border-radius: 6px; padding: 6px 10px; }
+.ca-empty-title { font-weight: 600; margin-bottom: 4px; }
+.ca-empty-body { color: var(--ca-muted); }
