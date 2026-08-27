@@ -18,6 +18,8 @@ test("system prompt covers provisioning + confirmation flow", () => {
   assert.match(SYSTEM_PROMPT, /postSql/);
   assert.match(SYSTEM_PROMPT, /PARALLEL tool calls in a single response/);
   assert.match(SYSTEM_PROMPT, /one aggregate call/);
+  assert.match(SYSTEM_PROMPT, /ONE atomic postLayer/);
+  assert.match(SYSTEM_PROMPT, /NEVER loop patchLayerClass, patchStyle, patchLabel/);
   assert.match(SYSTEM_PROMPT, /never assume.*the_geom/is);
   assert.match(SYSTEM_PROMPT, /Never state that a change has been made/);
 });
