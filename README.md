@@ -40,6 +40,12 @@ Selected by `LLM_PROVIDER` (default `bedrock`):
 | `anthropic`     | `ANTHROPIC_API_KEY`                    | `ANTHROPIC_MODEL` (default `claude-opus-5`)       |
 | `openai`        | `OPENAI_API_KEY` (required for the real OpenAI API; optional — any value — when `OPENAI_BASE_URL` points at a local OpenAI-compatible endpoint) | `OPENAI_BASE_URL` (point at Ollama/LM Studio/vLLM), `OPENAI_MODEL` (default `gpt-5.1`) |
 
+The `openai` provider requires the endpoint to implement the OpenAI
+**Responses API** with response storage enabled — `previous_response_id` is
+used to link tool-result turns back to the prior turn. Plain Chat
+Completions endpoints (e.g. Ollama today) are **not yet supported**; a Chat
+Completions fallback is future work.
+
 `MCP_ARGS` is always hard-required (how to invoke the Centia MCP server over
 stdio); `MCP_COMMAND` defaults to `node` and `API_BASE_URL` defaults to
 `https://api.centia.io` if unset. Recommend setting all three explicitly
