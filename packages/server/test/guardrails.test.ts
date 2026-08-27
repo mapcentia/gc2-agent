@@ -12,6 +12,10 @@ test("postSql is read (regex-guarded elsewhere)", () => {
   assert.equal(classifyTool("postSql"), "read");
 });
 
+test("the local readSkill tool is read", () => {
+  assert.equal(classifyTool("readSkill"), "read");
+});
+
 test("write tools require approval", () => {
   assert.equal(classifyTool("postSchema"), "write");
   assert.equal(classifyTool("patchLayer"), "write");

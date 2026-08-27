@@ -5,21 +5,47 @@ import { cors } from "hono/cors";
 import { stream } from "hono/streaming";
 import type { ChatRequest } from "@centia-io/agent-protocol";
 import { verifyToken } from "./auth.js";
-import { mcpExecutor, runAgentStream } from "./chat.js";
+import { mcpExecutor, runAgentStream, type ExecuteFn } from "./chat.js";
+import { READ_SKILL_TOOL, loadAgentDocs, resolveDocsRoot, skillReader } from "./docs.js";
 import { McpPool } from "./mcpPool.js";
 import { createAdapterFromEnv } from "./provider.js";
-import { SYSTEM_PROMPT, renderContextBlock } from "./prompt.js";
+import {
+  SYSTEM_PROMPT,
+  renderAgentsBlock,
+  renderContextBlock,
+  renderSkillCatalog,
+} from "./prompt.js";
 
 const PORT = Number(process.env["PORT"] ?? 8790);
 const adapter = createAdapterFromEnv(process.env);
 const pool = new McpPool();
 setInterval(() => void pool.reap(), 60_000).unref();
 
+// Knowledge bundled with the MCP server (AGENTS.md + skill guides), loaded
+// once at boot for prompt-cache stability. Missing docs are a warning, not
+// an error — the agent still works, just without the guides.
+const docsRoot = resolveDocsRoot(process.env);
+const docs = await loadAgentDocs(docsRoot);
+const readSkill = skillReader(docs);
+if (!docsRoot) {
+  console.warn("[boot] MCP docs not found (set MCP_DOCS_PATH); running without AGENTS.md/skills");
+}
+
+const staticSystemBlocks: string[] = [SYSTEM_PROMPT];
+if (docs.agentsMd) staticSystemBlocks.push(renderAgentsBlock(docs.agentsMd));
+if (docs.skills.length > 0) staticSystemBlocks.push(renderSkillCatalog(docs.skills));
+
 const app = new Hono();
 app.use("/api/*", cors());
 
 app.get("/api/health", (c) =>
-  c.json({ ok: true, provider: adapter.provider, model: adapter.model, sessions: pool.size() }),
+  c.json({
+    ok: true,
+    provider: adapter.provider,
+    model: adapter.model,
+    sessions: pool.size(),
+    docs: { agentsMd: docs.agentsMd !== null, skills: docs.skills.length },
+  }),
 );
 
 const bearer = (auth: string | undefined): string | null => {
@@ -56,21 +82,25 @@ app.post("/api/chat", async (c) => {
     );
   }
 
-  const systemBlocks = [SYSTEM_PROMPT];
+  const systemBlocks = [...staticSystemBlocks];
   if (body.context) systemBlocks.push(renderContextBlock(body.context));
 
   c.header("Content-Type", "application/x-ndjson; charset=utf-8");
   c.header("Cache-Control", "no-cache, no-transform");
   c.header("X-Accel-Buffering", "no");
 
+  const mcpExec = mcpExecutor(session);
+  const execute: ExecuteFn = (req) =>
+    req.name === READ_SKILL_TOOL.name ? readSkill(req) : mcpExec(req);
+
   return stream(c, async (s) => {
     const events = runAgentStream({
       adapter,
       systemBlocks,
-      tools: session.tools,
+      tools: [...session.tools, READ_SKILL_TOOL],
       messages: body.messages,
       resume: body.resume,
-      execute: mcpExecutor(session),
+      execute,
     });
     try {
       for await (const ev of events) {

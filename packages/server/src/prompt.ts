@@ -39,3 +39,22 @@ export const renderContextBlock = (ctx: AppContext): string => {
   );
   return lines.join("\n");
 };
+
+/** AGENTS.md from the MCP server package, injected verbatim as a system block. */
+export const renderAgentsBlock = (agentsMd: string): string =>
+  ["# Centia BaaS core rules (AGENTS.md)", "", agentsMd.trim()].join("\n");
+
+/** Catalog of bundled skill guides + how to load them via the readSkill tool. */
+export const renderSkillCatalog = (
+  skills: { name: string; description: string }[],
+): string => {
+  const lines = [
+    "# Skill guides",
+    "Detailed Centia guides are available through the readSkill tool. Load the",
+    "relevant guide BEFORE working in its area — they carry the payload",
+    "conventions and pitfalls the tools alone do not explain.",
+    "",
+  ];
+  for (const s of skills) lines.push(`- ${s.name}: ${s.description}`);
+  return lines.join("\n");
+};

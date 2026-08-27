@@ -23,10 +23,11 @@ const DENY = new Set([
   "postSqlNoToken",
 ]);
 
-// Only postSql is auto-read (guarded by isReadOnlySql).
+// Auto-read beyond get*: postSql (guarded by isReadOnlySql) and the local
+// readSkill tool (serves bundled skill guides, no backend access).
 // postGraphQL and postCallDry deliberately fall through to "write" because
 // there is no payload guard for GraphQL mutations and dry-run side effects.
-const READ_EXTRA = new Set(["postSql"]);
+const READ_EXTRA = new Set(["postSql", "readSkill"]);
 
 export type ToolClass = "read" | "write" | "deny";
 
