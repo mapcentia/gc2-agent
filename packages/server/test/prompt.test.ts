@@ -17,4 +17,5 @@ test("system prompt covers provisioning + confirmation flow", () => {
   assert.match(SYSTEM_PROMPT, /confirmation/i);
   assert.match(SYSTEM_PROMPT, /postSql/);
   assert.match(SYSTEM_PROMPT, /never assume.*the_geom/is);
+  assert.match(SYSTEM_PROMPT, /Never state that a change has been made/);
 });
