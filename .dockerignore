@@ -1,5 +1,10 @@
 **/.env
+**/.env.*
 **/node_modules
 **/dist
 **/*.tsbuildinfo
 .git
+.idea
+nginx
+docker-compose.yml
+README.md

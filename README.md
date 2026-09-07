@@ -59,6 +59,62 @@ the invoked `dist/index.js`) and can be overridden with `MCP_DOCS_PATH`.
 Requires `@centia-io/mcp-server` >= 1.0.17, which ships those files; missing
 docs produce a boot warning and the agent runs without them.
 
+## Docker / production
+
+`Dockerfile` (workspace root) builds the server image; `docker-compose.yml`
+is the Swarm stack used in production, mirroring gc2-chat: Traefik on the
+shared `web` overlay → an nginx edge container → the agent server.
+
+```bash
+docker build -t mapcentia/gc2-agent:latest .        # from the workspace root
+docker run --rm -p 8790:8790 -e AWS_REGION=eu-west-1 mapcentia/gc2-agent:latest
+curl -s localhost:8790/api/health                    # {"ok":true,...}
+```
+
+Image properties:
+
+- Runs as the non-root `node` user, under `tini` as PID 1 so `SIGTERM`
+  reaches the server immediately (`node --import tsx src/index.ts`, no
+  pnpm/tsx wrapper process in between).
+- `HEALTHCHECK` polls `GET /api/health` every 30 s. It does not exercise
+  the LLM credentials — a bad provider config shows up in the boot log, not
+  in the health status.
+- `@centia-io/mcp-server` is installed globally, pinned by the
+  `MCP_SERVER_VERSION` build arg; `MCP_ARGS` already points at it.
+- The pnpm version is pinned through `packageManager` in the root
+  `package.json`, so the lockfile and the installer always match.
+- There is no graceful shutdown in the server yet: in-flight chat streams
+  are cut on redeploy, and pooled MCP children are reaped with the
+  container rather than closed explicitly.
+
+Deployment env is never baked in. Copy `.env.example` to `.env` and set at
+least `AGENT_HOST`, the provider variables (`AWS_REGION` + `BEDROCK_MODEL`
+plus either `AWS_BEARER_TOKEN_BEDROCK` or SigV4 credentials for `bedrock`,
+or `ANTHROPIC_API_KEY` for `anthropic`) and `API_BASE_URL`. `docker stack
+deploy` does not read `.env` on its own, so resolve it first:
+
+```bash
+docker compose build && docker compose push
+docker stack deploy -c <(docker compose config) centia-agent
+```
+
+### Reverse-proxy contract
+
+The host app calls the agent through relative URLs (`/agent/api/chat`), so
+whatever fronts it must:
+
+1. Route `/agent/*` on the host app's hostname to the agent and strip the
+   `/agent` prefix (the server listens on `/api/*`).
+2. Disable response buffering on that route — `/api/chat` streams ndjson
+   events as they happen (the server also sends `X-Accel-Buffering: no`).
+3. Allow long read timeouts; an agent turn can run for minutes.
+
+`nginx/nginx.conf` implements exactly this and is what the compose stack
+ships. Because the browser only ever talks to its own origin, the server's
+wildcard `cors()` is not reachable cross-origin in this setup. **Do not
+expose port 8790 directly to the internet** without first scoping CORS to
+the host app's origin.
+
 ## Confirmation protocol
 
 1. The client POSTs `messages` (and optional `context`) to `/api/chat` with

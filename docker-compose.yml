@@ -1,0 +1,97 @@
+# Production stack for the centia-agent server (Docker Swarm, same layout as
+# gc2-chat: Traefik on the shared `web` overlay -> nginx edge -> agent).
+#
+#   docker compose build
+#   docker compose push                      # if deploying from a registry
+#   docker stack deploy -c <(docker compose config) centia-agent
+#
+# `docker stack deploy` does not read .env by itself; piping through
+# `docker compose config` resolves the ${VAR} references below from .env
+# (see .env.example) or the shell environment. Never write secrets into this
+# file - it is committed.
+#
+# Routing: the host app calls relative /agent/api/chat, so Traefik matches
+# Host + PathPrefix:/agent and hands it to nginx, which strips the prefix and
+# proxies to agent:8790 with buffering off (NDJSON streaming). Because the
+# browser only ever talks to its own origin, the server's wildcard cors()
+# is harmless here. Do NOT publish the agent port directly to the internet
+# without first scoping CORS to the host app's origin.
+
+networks:
+  # Shared edge overlay where Traefik lives (ELB -> Traefik -> :80).
+  web:
+    external: true
+  # Private overlay for nginx <-> agent traffic only.
+  internal:
+    driver: overlay
+    attachable: true
+
+services:
+  nginx:
+    build: ./nginx
+    image: mapcentia/gc2-agent-nginx:latest
+    depends_on:
+      - agent
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+      labels:
+        - traefik.backend=centia-agent
+        # Same hostname as the host app; only the /agent prefix lands here.
+        - traefik.frontend.rule=Host:${AGENT_HOST:?set AGENT_HOST};PathPrefix:/agent
+        - traefik.port=80
+        - traefik.backend.loadbalancer.swarm=true
+        - traefik.docker.network=web
+        - traefik.frontend.passHostHeader=true
+    networks:
+      - web
+      - internal
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+
+  agent:
+    build: .
+    image: mapcentia/gc2-agent:latest
+    environment:
+      # --- LLM provider -----------------------------------------------------
+      # bedrock (default) | anthropic | openai
+      - LLM_PROVIDER=${LLM_PROVIDER:-bedrock}
+      # bedrock: the Mantle endpoint in AWS_REGION. Model ids carry the
+      # `anthropic.` prefix. Auth is either a Bedrock API key
+      # (AWS_BEARER_TOKEN_BEDROCK) or the standard SigV4 chain
+      # (AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY or an instance role).
+      - AWS_REGION=${AWS_REGION:-eu-west-1}
+      - BEDROCK_MODEL=${BEDROCK_MODEL:-anthropic.claude-sonnet-5}
+      - AWS_BEARER_TOKEN_BEDROCK=${AWS_BEARER_TOKEN_BEDROCK:-}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      # anthropic: direct API instead of Bedrock.
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-}
+      # --- Centia MCP server (stdio child, baked into the image) ------------
+      # The user's own Centia token is injected per session from the
+      # request's Bearer header - there is no service-level API_TOKEN.
+      - MCP_COMMAND=node
+      - MCP_ARGS=/usr/local/lib/node_modules/@centia-io/mcp-server/dist/index.js
+      - API_BASE_URL=${API_BASE_URL:-https://api.centia.io}
+      - PORT=8790
+    # Graceful shutdown is not implemented in the server (no SIGTERM handler;
+    # pooled MCP children are not closed explicitly). tini in the image
+    # forwards SIGTERM so node exits promptly, and the container teardown
+    # reaps the children - in-flight chat streams are cut on redeploy.
+    stop_grace_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+    networks:
+      - internal
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
