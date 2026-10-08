@@ -11,8 +11,8 @@ import { McpPool } from "./mcpPool.js";
 import { createAdapterFromEnv } from "./provider.js";
 import {
   SYSTEM_PROMPT,
-  renderAgentsBlock,
   renderContextBlock,
+  renderCoreRulesBlock,
   renderSkillCatalog,
 } from "./prompt.js";
 
@@ -21,18 +21,22 @@ const adapter = createAdapterFromEnv(process.env);
 const pool = new McpPool();
 setInterval(() => void pool.reap(), 60_000).unref();
 
-// Knowledge bundled with the MCP server (AGENTS.md + skill guides), loaded
+// Knowledge bundled with the MCP server (core rules + skill guides), loaded
 // once at boot for prompt-cache stability. Missing docs are a warning, not
 // an error — the agent still works, just without the guides.
 const docsRoot = resolveDocsRoot(process.env);
 const docs = await loadAgentDocs(docsRoot);
 const readSkill = skillReader(docs);
 if (!docsRoot) {
-  console.warn("[boot] MCP docs not found (set MCP_DOCS_PATH); running without AGENTS.md/skills");
+  console.warn("[boot] MCP docs not found (set MCP_DOCS_PATH); running without core rules/skills");
+} else if (!docs.coreRules) {
+  console.warn(`[boot] no core rules found under ${docsRoot} (expected skills/centia-rules/SKILL.md or AGENTS.md)`);
 }
 
 const staticSystemBlocks: string[] = [SYSTEM_PROMPT];
-if (docs.agentsMd) staticSystemBlocks.push(renderAgentsBlock(docs.agentsMd));
+if (docs.coreRules) {
+  staticSystemBlocks.push(renderCoreRulesBlock(docs.coreRules.body, docs.coreRules.source));
+}
 if (docs.skills.length > 0) staticSystemBlocks.push(renderSkillCatalog(docs.skills));
 
 const app = new Hono();
@@ -44,7 +48,7 @@ app.get("/api/health", (c) =>
     provider: adapter.provider,
     model: adapter.model,
     sessions: pool.size(),
-    docs: { agentsMd: docs.agentsMd !== null, skills: docs.skills.length },
+    docs: { coreRules: docs.coreRules?.source ?? null, skills: docs.skills.length },
   }),
 );
 
@@ -117,4 +121,5 @@ serve({ fetch: app.fetch, port: PORT }, (info) => {
   console.log(`centia-agent server on http://localhost:${info.port}`);
   console.log(`provider=${adapter.provider} model=${adapter.model}`);
   console.log(`mcp: ${process.env["MCP_COMMAND"] ?? "node"} ${process.env["MCP_ARGS"] ?? "(MCP_ARGS not set!)"}`);
+  console.log(`docs: coreRules=${docs.coreRules?.source ?? "none"} skills=${docs.skills.length}`);
 });

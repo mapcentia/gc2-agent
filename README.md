@@ -51,13 +51,16 @@ stdio); `MCP_COMMAND` defaults to `node` and `API_BASE_URL` defaults to
 `https://api.centia.io` if unset. Recommend setting all three explicitly
 rather than relying on the defaults.
 
-The server also injects the MCP server package's `AGENTS.md` into the system
-prompt and serves its `skills/*/SKILL.md` guides through a local `readSkill`
-tool (a catalog of names + descriptions lives in the prompt; the model loads
-guides on demand). The docs root is derived from `MCP_ARGS` (package root of
-the invoked `dist/index.js`) and can be overridden with `MCP_DOCS_PATH`.
-Requires `@centia-io/mcp-server` >= 1.0.17, which ships those files; missing
-docs produce a boot warning and the agent runs without them.
+The server also injects the MCP server package's global core rules into the
+system prompt and serves its `skills/*/SKILL.md` guides through a local
+`readSkill` tool (a catalog of names + descriptions lives in the prompt; the
+model loads guides on demand). The core rules come from the
+`skills/centia-rules/SKILL.md` skill (mcp-server >= 1.0.36, where `AGENTS.md`
+is only a pointer) and fall back to `AGENTS.md` on older packages
+(>= 1.0.17). The docs root is derived from `MCP_ARGS` (package root of the
+invoked `dist/index.js`) and can be overridden with `MCP_DOCS_PATH`. Missing
+docs produce a boot warning and the agent runs without them; `/api/health`
+reports which source is active under `docs.coreRules`.
 
 ## Docker / production
 

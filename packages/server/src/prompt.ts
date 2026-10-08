@@ -46,9 +46,21 @@ export const renderContextBlock = (ctx: AppContext): string => {
   return lines.join("\n");
 };
 
-/** AGENTS.md from the MCP server package, injected verbatim as a system block. */
-export const renderAgentsBlock = (agentsMd: string): string =>
-  ["# Centia BaaS core rules (AGENTS.md)", "", agentsMd.trim()].join("\n");
+/**
+ * Global core rules from the MCP server package (the centia-rules skill, or
+ * AGENTS.md on older packages), injected verbatim as a system block. The
+ * rules refer to sibling guides as `skills/<name>/SKILL.md` and tell the
+ * reader to "load" them; in this agent that means the readSkill tool.
+ */
+export const renderCoreRulesBlock = (body: string, source: string): string =>
+  [
+    `# Centia BaaS core rules (from ${source})`,
+    "These rules are already loaded; you do not need to load them again.",
+    "Where they say to load or read a skill such as `skills/<name>/SKILL.md`,",
+    "call the readSkill tool with that skill's name instead.",
+    "",
+    body.trim(),
+  ].join("\n");
 
 /** Catalog of bundled skill guides + how to load them via the readSkill tool. */
 export const renderSkillCatalog = (

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { renderAgentsBlock, renderContextBlock, renderSkillCatalog, SYSTEM_PROMPT } from "../src/prompt.js";
+import { renderContextBlock, renderCoreRulesBlock, renderSkillCatalog, SYSTEM_PROMPT } from "../src/prompt.js";
 
 test("context block renders app, description and data", () => {
   const block = renderContextBlock({
@@ -33,8 +33,11 @@ test("skill catalog lists names, descriptions and the readSkill instruction", ()
   assert.match(block, /readSkill/);
 });
 
-test("agents block wraps the raw AGENTS.md content", () => {
-  const block = renderAgentsBlock("# Core Rules\n- Rule one.");
+test("core rules block wraps the rules and maps skill paths onto readSkill", () => {
+  const block = renderCoreRulesBlock("# Core Rules\n- Rule one.", "centia-rules");
   assert.match(block, /Core Rules/);
   assert.match(block, /Rule one/);
+  assert.match(block, /centia-rules/);
+  assert.match(block, /readSkill/);
+  assert.match(renderCoreRulesBlock("x", "AGENTS.md"), /AGENTS\.md/);
 });

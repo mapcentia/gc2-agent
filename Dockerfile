@@ -7,9 +7,9 @@
 # .env.example) - no secrets are baked in here.
 
 ARG NODE_IMAGE=node:22-slim
-# Pinned so a rebuild is reproducible. Bump deliberately; >= 1.0.17 is
-# required for the AGENTS.md/skills docs the server injects into its prompt.
-ARG MCP_SERVER_VERSION=1.0.17
+# Pinned so a rebuild is reproducible. Bump deliberately; >= 1.0.36 ships the
+# core rules as the centia-rules skill (1.0.17+ works via the AGENTS.md fallback).
+ARG MCP_SERVER_VERSION=1.0.35
 
 ###############################################################################
 # Stage 1 - install workspace deps + build the protocol package

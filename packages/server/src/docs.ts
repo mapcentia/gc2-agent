@@ -5,15 +5,31 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { ToolExecutionResult, ToolRequest } from "./llm.js";
 
 /**
- * Knowledge shipped with the Centia MCP server: AGENTS.md (core rules) and
- * skills/<name>/SKILL.md guides. Injected into the agent so it follows the
- * same conventions as the coding agents (payload formats, id round-trips,
- * privileges, ...). AGENTS.md becomes a system block; skills are loaded on
- * demand through the local readSkill tool to keep the prompt small.
+ * Knowledge shipped with the Centia MCP server: the global core rules and
+ * the skills/<name>/SKILL.md guides. Injected into the agent so it follows
+ * the same conventions as the coding agents (payload formats, id
+ * round-trips, privileges, ...). The core rules become a system block;
+ * the other skills are loaded on demand through the local readSkill tool
+ * to keep the prompt small.
+ *
+ * Where the core rules live changed in mcp-server 1.0.36: they moved from
+ * AGENTS.md into skills/centia-rules/SKILL.md and AGENTS.md became a
+ * pointer stub. We prefer the skill and fall back to AGENTS.md for older
+ * packages.
  */
 
+export const CORE_RULES_SKILL = "centia-rules";
+
 export type SkillEntry = { name: string; description: string; body: string };
-export type AgentDocs = { agentsMd: string | null; skills: SkillEntry[] };
+export type CoreRules = { source: typeof CORE_RULES_SKILL | "AGENTS.md"; body: string };
+export type AgentDocs = {
+  /** Raw AGENTS.md (may be just a pointer stub on current packages). */
+  agentsMd: string | null;
+  /** The global hard rules to inject into the system prompt. */
+  coreRules: CoreRules | null;
+  /** On-demand skill guides (excludes the core-rules skill). */
+  skills: SkillEntry[];
+};
 
 /**
  * Locate the mcp-server checkout or installed package:
@@ -47,6 +63,8 @@ export const resolveDocsRoot = (
 
 const FRONTMATTER = /^---\n([\s\S]*?)\n---/;
 
+const stripFrontmatter = (text: string): string => text.replace(FRONTMATTER, "").trim();
+
 const parseFrontmatter = (text: string): { name: string; description: string } | null => {
   const m = FRONTMATTER.exec(text);
   if (!m) return null;
@@ -61,7 +79,7 @@ const parseFrontmatter = (text: string): { name: string; description: string } |
 };
 
 export const loadAgentDocs = async (root: string | null): Promise<AgentDocs> => {
-  if (!root) return { agentsMd: null, skills: [] };
+  if (!root) return { agentsMd: null, coreRules: null, skills: [] };
 
   let agentsMd: string | null = null;
   try {
@@ -71,6 +89,7 @@ export const loadAgentDocs = async (root: string | null): Promise<AgentDocs> => 
   }
 
   const skills: SkillEntry[] = [];
+  let coreRules: CoreRules | null = null;
   try {
     const entries = await readdir(join(root, "skills"), { withFileTypes: true });
     for (const entry of entries) {
@@ -83,13 +102,18 @@ export const loadAgentDocs = async (root: string | null): Promise<AgentDocs> => 
       }
       const meta = parseFrontmatter(body);
       if (!meta) continue; // no frontmatter — cannot catalog it
+      if (meta.name === CORE_RULES_SKILL) {
+        coreRules = { source: CORE_RULES_SKILL, body: stripFrontmatter(body) };
+        continue; // always in the prompt, so not catalogued for readSkill
+      }
       skills.push({ name: meta.name, description: meta.description, body });
     }
   } catch {
     // no skills directory
   }
   skills.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-  return { agentsMd, skills };
+  if (!coreRules && agentsMd) coreRules = { source: "AGENTS.md", body: agentsMd.trim() };
+  return { agentsMd, coreRules, skills };
 };
 
 export const READ_SKILL_TOOL: Anthropic.Tool = {
@@ -106,13 +130,18 @@ export const READ_SKILL_TOOL: Anthropic.Tool = {
 };
 
 /** Executor for the local readSkill tool. Names validate against the catalog
- * (exact match) — unknown or path-shaped input fails closed. */
+ * (exact match) — unknown or path-shaped input fails closed. The core-rules
+ * skill is served too, since the rules themselves tell the model to load it,
+ * even though it is already in the system prompt. */
 export const skillReader =
   (docs: AgentDocs) =>
   async (req: ToolRequest): Promise<ToolExecutionResult> => {
     const name = (req.input as { name?: unknown } | undefined)?.name;
-    const skill =
-      typeof name === "string" ? docs.skills.find((s) => s.name === name) : undefined;
+    let skill: { body: string } | undefined;
+    if (typeof name === "string") {
+      skill = docs.skills.find((s) => s.name === name);
+      if (!skill && name === docs.coreRules?.source) skill = docs.coreRules;
+    }
     if (!skill) {
       return {
         toolUseId: req.id,

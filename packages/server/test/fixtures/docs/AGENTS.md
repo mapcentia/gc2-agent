@@ -1,3 +1,3 @@
-# Fixture Core Rules
+# AGENTS.md - Fixture
 
-- Rule one.
+The global hard rules live in `skills/centia-rules/SKILL.md`. Read that skill first.
